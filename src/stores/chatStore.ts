@@ -149,6 +149,15 @@ export const useChatStore = defineStore('chat', {
       soundFx.playTypewriterClick();
     },
 
+    deleteMessage(messageId: string) {
+      const sess = this.currentSession;
+      if (sess) {
+        sess.messages = sess.messages.filter(m => m.id !== messageId);
+        this.saveToStorage();
+        soundFx.playTypewriterClick();
+      }
+    },
+
     clearCurrentMessages() {
       const sess = this.currentSession;
       if (sess) {

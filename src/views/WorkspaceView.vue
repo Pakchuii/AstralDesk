@@ -25,7 +25,11 @@ import {
   Sliders,
   Bot,
   Palette,
-  Minimize2
+  Minimize2,
+  Eraser,
+  Copy,
+  RotateCcw,
+  Settings
 } from 'lucide-vue-next';
 import { soundFx } from '@/services/audioSynthesizer';
 
@@ -224,6 +228,56 @@ watch(() => {
   }
 });
 
+// Context Menu Management
+const showContextMenu = ref(false);
+const contextMenuPos = ref({ x: 0, y: 0 });
+const targetMessage = ref<any | null>(null);
+
+const handleBubbleContextMenu = (e: MouseEvent, msg: any) => {
+  e.preventDefault();
+  targetMessage.value = msg;
+  contextMenuPos.value = {
+    x: Math.min(e.clientX, window.innerWidth - 220),
+    y: Math.min(e.clientY, window.innerHeight - 250)
+  };
+  showContextMenu.value = true;
+};
+
+const handleStageContextMenu = (e: MouseEvent) => {
+  e.preventDefault();
+  targetMessage.value = null;
+  contextMenuPos.value = {
+    x: Math.min(e.clientX, window.innerWidth - 220),
+    y: Math.min(e.clientY, window.innerHeight - 200)
+  };
+  showContextMenu.value = true;
+};
+
+const closeContextMenu = () => {
+  showContextMenu.value = false;
+};
+
+const copyTargetMessage = async () => {
+  if (targetMessage.value?.content) {
+    await navigator.clipboard.writeText(targetMessage.value.content);
+    soundFx.playCrystalChime([659.25, 880]);
+  }
+  showContextMenu.value = false;
+};
+
+const deleteTargetMessage = () => {
+  if (targetMessage.value) {
+    chatStore.deleteMessage(targetMessage.value.id);
+  }
+  showContextMenu.value = false;
+};
+
+const clearCurrentSessionMessages = () => {
+  chatStore.clearCurrentMessages();
+  soundFx.playCrystalChime([523.25, 659.25, 783.99]);
+  showContextMenu.value = false;
+};
+
 onMounted(() => {
   scrollToBottom(false);
   settingStore.checkAstrBotHealth();
@@ -231,7 +285,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="relative w-full h-full flex flex-col bg-slate-950/95 overflow-hidden select-none">
+  <div 
+    class="relative w-full h-full flex flex-col bg-slate-950/95 overflow-hidden select-none"
+    @click="closeContextMenu"
+  >
     <!-- Particle Background with 4 ACG themes -->
     <ParticleBackground />
 
@@ -321,7 +378,8 @@ onMounted(() => {
         <!-- Message Flow Container -->
         <div 
           ref="chatContainerRef"
-          class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4"
+          class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-4 max-w-full"
+          @contextmenu="handleStageContextMenu"
         >
           <!-- Welcome Companion Banner -->
           <div 
@@ -351,6 +409,8 @@ onMounted(() => {
               :key="msg.id"
               :message="msg"
               :assistant-name="settingStore.settings.botDisplayName"
+              @bubble-contextmenu="handleBubbleContextMenu"
+              @delete="chatStore.deleteMessage"
             />
           </template>
         </div>
@@ -479,5 +539,68 @@ onMounted(() => {
       v-if="showPortraitStudio" 
       @close="showPortraitStudio = false"
     />
+
+    <!-- 🌟 Right-Click Context Menu (二次元悬浮右键操作菜单) -->
+    <div 
+      v-if="showContextMenu"
+      class="fixed z-50 py-1.5 px-1 rounded-xl bg-slate-950/95 backdrop-blur-md border shadow-[0_0_25px_rgba(0,0,0,0.8)] text-xs text-slate-200 w-48 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none"
+      :style="{ 
+        left: `${contextMenuPos.x}px`, 
+        top: `${contextMenuPos.y}px`, 
+        borderColor: `${chatRoomConfig?.borderColor || '#38bdf8'}60` 
+      }"
+      @click.stop
+    >
+      <!-- Message specific actions -->
+      <template v-if="targetMessage">
+        <div class="px-2.5 py-1 text-[10px] text-slate-400 font-mono border-b border-slate-800 flex items-center justify-between">
+          <span>消息操作</span>
+          <span class="text-cyan-400">{{ targetMessage.role === 'assistant' ? 'AI 伴侣' : '我' }}</span>
+        </div>
+
+        <button 
+          class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-cyan-950/60 hover:text-cyan-300 transition-colors text-left"
+          @click="copyTargetMessage"
+        >
+          <Copy class="w-3.5 h-3.5 text-cyan-400" />
+          <span>复制此条文本</span>
+        </button>
+
+        <button 
+          class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-950/60 hover:text-rose-300 transition-colors text-left"
+          @click="deleteTargetMessage"
+        >
+          <Trash2 class="w-3.5 h-3.5 text-rose-400" />
+          <span>删除此条消息</span>
+        </button>
+
+        <div class="border-t border-slate-800/80 my-1"></div>
+      </template>
+
+      <!-- Global / Session actions -->
+      <button 
+        class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-950/60 hover:text-rose-300 transition-colors text-left"
+        @click="clearCurrentSessionMessages"
+      >
+        <Eraser class="w-3.5 h-3.5 text-amber-400" />
+        <span>清空当前全部记录</span>
+      </button>
+
+      <button 
+        class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-cyan-950/60 hover:text-cyan-300 transition-colors text-left"
+        @click="showContextMenu = false; handleNewSession()"
+      >
+        <Plus class="w-3.5 h-3.5 text-emerald-400" />
+        <span>开启全新对话</span>
+      </button>
+
+      <button 
+        class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-cyan-950/60 hover:text-cyan-300 transition-colors text-left"
+        @click="showContextMenu = false; showSettings = true"
+      >
+        <Settings class="w-3.5 h-3.5 text-cyan-400" />
+        <span>聊天室外观设置</span>
+      </button>
+    </div>
   </div>
 </template>

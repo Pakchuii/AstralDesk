@@ -4,7 +4,7 @@ import { ChatMessage } from '@/types';
 import CharacterAvatar from '@/components/character/CharacterAvatar.vue';
 import ThinkingPulse from './ThinkingPulse.vue';
 import MarkdownViewer from './MarkdownViewer.vue';
-import { Copy, Check, Bot, User, Sparkles } from 'lucide-vue-next';
+import { Copy, Check, Bot, User, Sparkles, Trash2 } from 'lucide-vue-next';
 import { soundFx } from '@/services/audioSynthesizer';
 import { useSettingStore } from '@/stores/settingStore';
 import { cleanAgentTrace } from '@/services/astralBot';
@@ -12,6 +12,11 @@ import { cleanAgentTrace } from '@/services/astralBot';
 const props = defineProps<{
   message: ChatMessage;
   assistantName?: string;
+}>();
+
+const emit = defineEmits<{
+  (e: 'bubble-contextmenu', event: MouseEvent, message: ChatMessage): void;
+  (e: 'delete', messageId: string): void;
 }>();
 
 const settingStore = useSettingStore();
@@ -128,7 +133,7 @@ const bubbleStyle = computed(() => {
 
     <!-- Message bubble container -->
     <div 
-      class="max-w-[85%] md:max-w-[80%] flex flex-col"
+      class="max-w-[85%] md:max-w-[80%] min-w-0 flex flex-col"
       :class="isAssistant ? 'items-start' : 'items-end'"
     >
       <!-- Sender tag & Timestamp -->
@@ -148,9 +153,10 @@ const bubbleStyle = computed(() => {
 
       <!-- Bubble content box with dynamic styling -->
       <div 
-        class="p-4 transition-all relative overflow-hidden text-sm border"
+        class="p-4 transition-all relative overflow-hidden text-sm border max-w-full break-words select-text cursor-default"
         :class="isAssistant ? 'rounded-tl-sm' : 'rounded-tr-sm'"
         :style="bubbleStyle"
+        @contextmenu.stop="emit('bubble-contextmenu', $event, message)"
       >
         <!-- Thinking Chain (Assistant only) -->
         <ThinkingPulse 
@@ -161,7 +167,7 @@ const bubbleStyle = computed(() => {
         />
 
         <!-- Main Content -->
-        <div v-if="displayContent">
+        <div v-if="displayContent" class="max-w-full overflow-hidden">
           <MarkdownViewer :content="displayContent" />
         </div>
 
@@ -180,12 +186,19 @@ const bubbleStyle = computed(() => {
           class="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 flex items-center gap-1 bg-slate-900/80 rounded px-1.5 py-0.5 border border-white/10 select-none text-[11px]"
         >
           <button 
-            class="hover:text-cyan-300 text-slate-400 p-1"
+            class="hover:text-cyan-300 text-slate-400 p-1 transition-colors"
             title="复制消息"
-            @click="copyContent"
+            @click.stop="copyContent"
           >
             <Check v-if="isCopied" class="w-3 h-3 text-emerald-400" />
             <Copy v-else class="w-3 h-3" />
+          </button>
+          <button 
+            class="hover:text-rose-400 text-slate-400 p-1 transition-colors"
+            title="删除此条消息"
+            @click.stop="emit('delete', message.id)"
+          >
+            <Trash2 class="w-3 h-3" />
           </button>
         </div>
       </div>
