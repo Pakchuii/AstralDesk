@@ -46,7 +46,11 @@ class ProactivePushService {
       }).catch(() => {});
     }
 
-    this.connectWebSocket();
+    // In Electron environment, native SQLite push handles instant delivery with 0% CPU.
+    // Fallback to WebSocket only in browser dev mode
+    if (!window.electronAPI) {
+      this.connectWebSocket();
+    }
   }
 
   public stop() {

@@ -201,6 +201,7 @@ const processPassThrough = () => {
 };
 
 const handleMouseMovePassThrough = (e: MouseEvent) => {
+  if (isMouseThroughState.value) return;
   lastClientX = e.clientX;
   lastClientY = e.clientY;
   if (!rafPassThroughPending) {
