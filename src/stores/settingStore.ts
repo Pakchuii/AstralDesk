@@ -285,6 +285,62 @@ export const useSettingStore = defineStore('settings', {
       }
     },
 
+    async migrateBase64AssetsToDisk() {
+      if (typeof window === 'undefined' || !window.electronAPI?.saveMediaAsset) return;
+      let changed = false;
+
+      // 1. Portrait base url
+      if (this.settings.portrait?.url?.startsWith('data:')) {
+        this.settings.portrait.url = await window.electronAPI.saveMediaAsset('portrait_base.webp', this.settings.portrait.url);
+        changed = true;
+      }
+
+      // 2. Portrait actions
+      if (this.settings.portrait?.actions) {
+        for (const act of this.settings.portrait.actions) {
+          if (act.assetUrl?.startsWith('data:')) {
+            act.assetUrl = await window.electronAPI.saveMediaAsset(`${act.id || 'act'}.webp`, act.assetUrl);
+            changed = true;
+          }
+        }
+      }
+
+      // 3. Background
+      if (this.settings.background?.url?.startsWith('data:')) {
+        this.settings.background.url = await window.electronAPI.saveMediaAsset('background_media', this.settings.background.url);
+        changed = true;
+      }
+
+      // 4. Bot Avatar
+      if (this.settings.botAvatar?.url?.startsWith('data:')) {
+        this.settings.botAvatar.url = await window.electronAPI.saveMediaAsset('bot_avatar.png', this.settings.botAvatar.url);
+        this.settings.botAvatarUrl = this.settings.botAvatar.url;
+        changed = true;
+      }
+
+      // 5. User Avatar
+      if (this.settings.userAvatar?.url?.startsWith('data:')) {
+        this.settings.userAvatar.url = await window.electronAPI.saveMediaAsset('user_avatar.png', this.settings.userAvatar.url);
+        this.settings.userAvatarUrl = this.settings.userAvatar.url;
+        changed = true;
+      }
+
+      // 6. Touch voices
+      if (this.settings.touchVoice?.voices) {
+        for (const v of this.settings.touchVoice.voices) {
+          if (v.audioUrl?.startsWith('data:')) {
+            v.audioUrl = await window.electronAPI.saveMediaAsset(`${v.id || 'voice'}.mp3`, v.audioUrl);
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) {
+        this.save();
+        console.log('[Memory Optimizer] Migrated large base64 media to disk assets successfully.');
+      }
+    },
+
     setEngine(engine: EngineType) {
       this.settings.engine = engine;
       this.save();

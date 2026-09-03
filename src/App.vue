@@ -46,6 +46,7 @@ const switchToWorkspace = () => {
 
 onMounted(() => {
   settingStore.applyGlobalFont();
+  settingStore.migrateBase64AssetsToDisk();
   proactivePushService.start();
 
   if (window.electronAPI) {

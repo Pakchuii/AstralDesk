@@ -18,6 +18,7 @@ export interface ElectronAPI {
   onMouseThroughChange?: (callback: (enabled: boolean) => void) => void;
   onAstrBotPushMessage?: (callback: (data: any) => void) => void;
   fetchMissedMessages?: (limit?: number) => Promise<any[]>;
+  saveMediaAsset?: (name: string, base64Data: string) => Promise<string>;
 }
 
 declare global {

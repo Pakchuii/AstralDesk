@@ -77,9 +77,12 @@ const handleBaseUpload = (e: Event) => {
   localConfig.value.type = isVideo ? 'video' : 'webp';
 
   const reader = new FileReader();
-  reader.onload = (event) => {
-    const result = event.target?.result as string;
+  reader.onload = async (event) => {
+    let result = event.target?.result as string;
     if (result) {
+      if (window.electronAPI?.saveMediaAsset) {
+        result = await window.electronAPI.saveMediaAsset(file.name, result);
+      }
       localConfig.value.url = result;
       soundFx.playCrystalChime();
     }
@@ -103,9 +106,12 @@ const handleActionUpload = (e: Event) => {
   }
 
   const reader = new FileReader();
-  reader.onload = (event) => {
-    const result = event.target?.result as string;
+  reader.onload = async (event) => {
+    let result = event.target?.result as string;
     if (result) {
+      if (window.electronAPI?.saveMediaAsset) {
+        result = await window.electronAPI.saveMediaAsset(file.name, result);
+      }
       act.assetUrl = result;
       soundFx.playCrystalChime();
     }

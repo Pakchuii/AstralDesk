@@ -18,4 +18,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMouseThroughChange: (callback: (enabled: boolean) => void) => {
     ipcRenderer.on('mouse-through-changed', (_event, val) => callback(val));
   },
+  saveMediaAsset: (name: string, base64Data: string) => ipcRenderer.invoke('save-media-asset', { name, base64Data }),
 });

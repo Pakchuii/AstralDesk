@@ -7,6 +7,16 @@ class AudioSynthesizer {
   private ctx: AudioContext | null = null;
   private isEnabled: boolean = true;
   private volume: number = 0.5;
+  private idleSuspendTimer: any = null;
+
+  private scheduleSuspend() {
+    if (this.idleSuspendTimer) clearTimeout(this.idleSuspendTimer);
+    this.idleSuspendTimer = setTimeout(() => {
+      if (this.ctx && this.ctx.state === 'running') {
+        this.ctx.suspend().catch(() => {});
+      }
+    }, 15000);
+  }
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -19,6 +29,7 @@ class AudioSynthesizer {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
+    this.scheduleSuspend();
     return this.ctx;
   }
 

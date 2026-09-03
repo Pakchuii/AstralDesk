@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, screen, protocol, net } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -8,11 +8,26 @@ import { exec, execFile } from 'node:child_process';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Performance switches for smooth transparent overlay with near-zero CPU usage
+// Register privileged scheme for high-performance zero-RAM local asset loading
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'astral-asset',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+      bypassCSP: true,
+    }
+  }
+]);
+
+// Performance & Memory switches: Hardware rasterization with capped 512MB V8 heap to prevent GC freezes
 app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
-app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization');
+app.commandLine.appendSwitch('disable-gpu-memory-buffer-video-frames');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512');
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -470,6 +485,53 @@ function initAstrBotNativeSync() {
 }
 
 app.whenReady().then(() => {
+  // Portable storage directory: strictly inside the extracted application folder (NOT C: drive)
+  const appRootDir = app.isPackaged 
+    ? path.dirname(process.execPath) 
+    : process.cwd();
+  const mediaDir = path.join(appRootDir, 'data', 'media_assets');
+
+  if (!fs.existsSync(mediaDir)) {
+    try {
+      fs.mkdirSync(mediaDir, { recursive: true });
+    } catch (e) {
+      console.error('Failed to create portable media directory:', e);
+    }
+  }
+
+  // Handle zero-overhead local asset streaming
+  protocol.handle('astral-asset', (request) => {
+    try {
+      const rawPath = request.url.replace(/^astral-asset:\/\//, '');
+      const decoded = decodeURIComponent(rawPath);
+      const fullPath = path.join(mediaDir, decoded);
+      return net.fetch(`file:///${fullPath.replace(/\\/g, '/')}`);
+    } catch (err) {
+      console.error('Error handling astral-asset protocol:', err);
+      return new Response('Not found', { status: 404 });
+    }
+  });
+
+  // Save media assets to disk to prevent giant base64 strings in memory
+  ipcMain.handle('save-media-asset', async (_event, { name, base64Data }: { name: string; base64Data: string }) => {
+    try {
+      if (!base64Data || !base64Data.startsWith('data:')) {
+        return base64Data;
+      }
+      const ext = path.extname(name || '') || '.png';
+      const safeExt = ext.startsWith('.') ? ext : `.${ext}`;
+      const cleanName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}${safeExt}`;
+      const destPath = path.join(mediaDir, cleanName);
+      const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      const buffer = matches ? Buffer.from(matches[2], 'base64') : Buffer.from(base64Data, 'base64');
+      fs.writeFileSync(destPath, buffer);
+      return `astral-asset://${cleanName}`;
+    } catch (err) {
+      console.error('Failed to save media asset to disk:', err);
+      return base64Data;
+    }
+  });
+
   initAstrBotNativeSync();
   createWindow();
   createTraySafe();

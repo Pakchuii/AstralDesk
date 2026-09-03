@@ -74,9 +74,12 @@ const handleVoiceAudioUpload = (e: Event) => {
 
   Array.from(files).forEach(file => {
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
+    reader.onload = async (ev) => {
+      let result = ev.target?.result as string;
       if (result) {
+        if (window.electronAPI?.saveMediaAsset) {
+          result = await window.electronAPI.saveMediaAsset(file.name, result);
+        }
         const cleanName = file.name.replace(/\.[^/.]+$/, '');
         settingStore.settings.touchVoice?.voices.push({
           id: 'voice_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
@@ -364,9 +367,12 @@ const handleBgUpload = (e: Event) => {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (event) => {
-    const result = event.target?.result as string;
+  reader.onload = async (event) => {
+    let result = event.target?.result as string;
     if (result) {
+      if (window.electronAPI?.saveMediaAsset) {
+        result = await window.electronAPI.saveMediaAsset(file.name, result);
+      }
       settingStore.settings.background.enabled = true;
       settingStore.settings.background.type = file.type.includes('video') ? 'video' : 'image';
       settingStore.settings.background.url = result;
@@ -383,9 +389,12 @@ const handleBotAvatarUpload = (e: Event) => {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (event) => {
-    const result = event.target?.result as string;
+  reader.onload = async (event) => {
+    let result = event.target?.result as string;
     if (result) {
+      if (window.electronAPI?.saveMediaAsset) {
+        result = await window.electronAPI.saveMediaAsset(file.name, result);
+      }
       settingStore.settings.botAvatar = {
         url: result,
         scale: 1.5,
@@ -406,9 +415,12 @@ const handleUserAvatarUpload = (e: Event) => {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (event) => {
-    const result = event.target?.result as string;
+  reader.onload = async (event) => {
+    let result = event.target?.result as string;
     if (result) {
+      if (window.electronAPI?.saveMediaAsset) {
+        result = await window.electronAPI.saveMediaAsset(file.name, result);
+      }
       settingStore.settings.userAvatar = {
         url: result,
         scale: 1.5,
