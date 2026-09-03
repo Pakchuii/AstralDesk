@@ -203,7 +203,7 @@ onUnmounted(() => {
 
     <!-- Breathing Animation Wrapper (Keeps CSS animation isolated from transform scale) -->
     <div 
-      class="w-full h-full flex items-center justify-center bg-transparent overflow-visible pointer-events-none"
+      class="w-full h-full flex items-center justify-center bg-transparent overflow-visible pointer-events-none will-change-transform"
       :class="config?.enableBreathing === true ? 'animate-float' : ''"
     >
       <!-- Dedicated Transform & Dual Scale Layer (Base Scale × Viewport Framing Scale) -->
