@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, screen, protocol, net } from 'electron';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import fs from 'node:fs';
 import os from 'node:os';
 import { exec, execFile } from 'node:child_process';
@@ -499,13 +499,17 @@ app.whenReady().then(() => {
     }
   }
 
-  // Handle zero-overhead local asset streaming
+  // Handle zero-overhead local asset streaming (bulletproof for Windows slashes and Chromium trailing slashes)
   protocol.handle('astral-asset', (request) => {
     try {
-      const rawPath = request.url.replace(/^astral-asset:\/\//, '');
-      const decoded = decodeURIComponent(rawPath);
-      const fullPath = path.join(mediaDir, decoded);
-      return net.fetch(`file:///${fullPath.replace(/\\/g, '/')}`);
+      const rawPath = request.url.replace(/^astral-asset:\/\//i, '');
+      const decoded = decodeURIComponent(rawPath).replace(/^[\\\/]+|[\\\/]+$/g, '');
+      const cleanFileName = path.basename(decoded);
+      const fullPath = path.join(mediaDir, cleanFileName);
+      if (!fs.existsSync(fullPath)) {
+        return new Response('Asset not found', { status: 404 });
+      }
+      return net.fetch(pathToFileURL(fullPath).toString());
     } catch (err) {
       console.error('Error handling astral-asset protocol:', err);
       return new Response('Not found', { status: 404 });
